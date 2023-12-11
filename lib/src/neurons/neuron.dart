@@ -174,6 +174,6 @@ class Neuron {
         _fieldActivationAlgorithm: activationAlgorithm.index,
         _fieldLearningRate: learningRate,
         _fieldIsFirstLayer: isInput,
-        _fieldInput: inputs
+        _fieldInput: inputs,
       };
 }
