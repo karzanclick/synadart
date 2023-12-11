@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'dart:math';
+
+// import 'package:sprint/sprint.dart';
 
 import 'package:synadart/src/activation.dart';
 import 'package:synadart/src/utils/mathematical_operations.dart';
+import 'package:synadart/src/utils/save_load.dart';
 import 'package:synadart/src/utils/value_generator.dart';
 
 /// A representation of a single `Neuron` within a `Network` of `Layers` (of
@@ -9,6 +13,9 @@ import 'package:synadart/src/utils/value_generator.dart';
 /// basic of which being the taking of the weighted sum of [inputs] and
 /// [weights], and passing it on to the next `Neuron`.
 class Neuron {
+  /// `Sprint` instance for logging messages.
+  // final Sprint log = Sprint('Neuron');
+
   /// The activation algorithm used for determining this `Neuron`'s level of
   /// activation.
   late final ActivationFunction activation;
@@ -16,11 +23,14 @@ class Neuron {
   /// The derivative of the activation algorithm.
   late final ActivationFunction activationPrime;
 
+  /// The algorithm used for this `Neuron`
+  late final ActivationAlgorithm activationAlgorithm;
+
   /// The sensitivity of this `Neuron` to the function adjusting [weights]
   /// during training.
   ///
   ///
-  final double learningRate;
+  late final double learningRate;
 
   /// The weights of connections to the precedent `Neurons`, which can be
   /// imagined as how influential each `Neuron` in the preceding layer is on
@@ -31,6 +41,13 @@ class Neuron {
   /// connections to `Neurons` from the previous `Layer` in order to create an
   /// [output].
   List<double> inputs = [];
+
+  /// Keys used to identify this `Neuron` once parsed into a [RawNeuron].
+  final _fieldWeight = 'weight';
+  final _fieldInput = 'input';
+  final _fieldActivationAlgorithm = 'activationAlgorithm';
+  final _fieldLearningRate = 'learningRate';
+  final _fieldIsFirstLayer = 'isFirstLayer';
 
   /// Specifies whether this `Neuron` belongs to an input `Layer`. This is used
   /// to determine the source of output, because a parentless `Neuron` will not
@@ -54,12 +71,8 @@ class Neuron {
   /// [weights] - (Optional) Weights of connections to `Neuron`s in the previous
   /// `Layer`.  If the [weights] aren't provided, they will be generated
   /// randomly.
-  ///
-  /// ⚠️ Throws a [FormatException] if the number of weights supplied to this
-  /// neuron does not match the number of connections to neurons in the parent
-  /// layer.
   Neuron({
-    required ActivationAlgorithm activationAlgorithm,
+    required this.activationAlgorithm,
     required int parentLayerSize,
     required this.learningRate,
     List<double> weights = const [],
@@ -97,6 +110,19 @@ class Neuron {
     // ignore: prefer_initializing_formals
     this.weights = weights;
     return;
+  }
+
+  /// Create a `Neuron` from the it's JSON Model
+  Neuron.fromJson(RawNeuron json) {
+    weights = List<double>.from(json[_fieldWeight] as List);
+    inputs = List<double>.from(json[_fieldInput] as List);
+    isInput = json[_fieldIsFirstLayer] as bool;
+    learningRate = json[_fieldLearningRate] as double;
+
+    final activationIndex = json[_fieldActivationAlgorithm] as int;
+    activationAlgorithm = ActivationAlgorithm.values[activationIndex];
+    activation = resolveActivationAlgorithm(activationAlgorithm);
+    activationPrime = resolveActivationDerivative(activationAlgorithm);
   }
 
   /// Accepts a single [input] or multiple [inputs] by assigning them to the
@@ -141,4 +167,13 @@ class Neuron {
   /// through the activation function.
   double get output =>
       weights.isEmpty ? inputs.first : activation(() => dot(inputs, weights));
+
+  /// Parse this `Neuron` to a JSON Model
+  RawNeuron toJson() => <String, dynamic>{
+        _fieldWeight: weights,
+        _fieldActivationAlgorithm: activationAlgorithm.index,
+        _fieldLearningRate: learningRate,
+        _fieldIsFirstLayer: isInput,
+        _fieldInput: inputs
+      };
 }
